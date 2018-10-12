@@ -5,7 +5,6 @@ class GameObject
 protected:
 	Vector2 direction;
 	float speed;
-	bool deleteMe = false;
 public:
 	Rectangle collisionRect;
 
