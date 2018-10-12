@@ -23,10 +23,12 @@ int main()
 {
 	// Initialization
 	//--------------------------------------------------------------------------------------
-	
+
 	InitWindow(screenWidth, screenHeight, "raylib [core] example - basic window");
-	
+
 	FloorTile*** floorTiles = new FloorTile**[screenHeight];
+
+	float gameTimer = 0;
 
 	Vector2 scores;
 	int scoretimer = 0;
@@ -50,19 +52,27 @@ int main()
 	{
 		if (i % 2 == 0)
 		{
-			playerList[i] = new Player({ 50.0f, i * 200.0f + 50.0f }, BASE_GUN, team1Color);
+			playerList[i] = new Player({ 50.0f, i * 200.0f + 50.0f }, BASE_GUN, team1Color, team2Color, i);
 		}
 		else
 		{
-			playerList[i] = new Player({ 50.0f, i * 200.0f + 50.0f }, BASE_GUN, team2Color);
+			playerList[i] = new Player({ 50.0f, i * 200.0f + 50.0f }, BASE_GUN, team2Color, team1Color, i);
 		}
 	}
 
-	Rectangle obsticles[10];
-	int obsticleCount = 0;
+	Rectangle obsticles[maxObsticles];
+	int obsticleCount = 4;
 
-	Rectangle pits[10];
+	obsticles[0] = { 40, 0, screenWidth - 80, 40 };
+	obsticles[1] = { 0, 40, 40, screenHeight - 80 };
+	obsticles[2] = { 40, screenHeight - 40, screenWidth - 80, 40 };
+	obsticles[3] = { screenWidth - 40, 40, 40, screenHeight - 80 };
+
+	Rectangle pits[maxObsticles];
 	int pitCount = 0;
+
+	pits[0] = { 400, 400, 200, 200 };
+	pitCount++;
 
 	Shot* shotList[maxShotCount];
 
@@ -71,7 +81,7 @@ int main()
 		shotList[i] = new Shot();
 	}
 
-	Controller controller{playerList, shotList};
+	Controller controller{ playerList, shotList };
 
 	SetTargetFPS(60);
 	//--------------------------------------------------------------------------------------
@@ -83,19 +93,26 @@ int main()
 		//----------------------------------------------------------------------------------
 		// TODO: Update your variables here
 		//----------------------------------------------------------------------------------
-
-		for (int i = 0; i < maxPlayerCount; i++)
+		if (gameTimer <= matchTime)
 		{
-			playerList[i]->Update(&controller);
+			for (int i = 0; i < maxPlayerCount; i++)
+			{
+				playerList[i]->Update(&controller, floorTiles);
+			}
+
+			gameTimer += GetFrameTime();
 		}
-		
+
 		for (int i = 0; i < maxShotCount; i++)
 		{
 			if (shotList[i]->active)
 			{
-				shotList[i]->Update(&controller, floorTiles);
+				shotList[i]->Update(&controller, floorTiles, obsticles, pits, playerList);
 			}
 		}
+
+		controller.clearFromObsticle(floorTiles, pits);
+		controller.clearFromObsticle(floorTiles, obsticles);
 
 		if (scoretimer >= 10)
 		{
@@ -126,13 +143,24 @@ int main()
 
 		for (int i = 0; i < pitCount; i++)
 		{
-			DrawRectangle(pits[i].x, pits[i].y, pits[i].width, pits[i].height, DARKBLUE);
+			Vector2 shadowpoints[6] =
+			{
+				{ pits[i].x, pits[i].y },
+				{ pits[i].x, pits[i].y + pits[i].height },
+				{ pits[i].x + shadowLength, pits[i].y + pits[i].height },
+				{ pits[i].x + shadowLength, pits[i].y + shadowLength },
+				{ pits[i].x + pits[i].width, pits[i].y + shadowLength },
+				{ pits[i].x + pits[i].width, pits[i].y },
+			};
+			DrawRectangle(pits[i].x, pits[i].y, pits[i].width, pits[i].height, pitColor);
+			DrawPolyEx(shadowpoints, 6, Color{ 0, 0, 0, shadowIntensity });
 		}
 
 		for (int i = 0; i < maxPlayerCount; i++)
 		{
 			DrawCircle(playerList[i]->getCenter().x, playerList[i]->getCenter().y, playerList[i]->getRadius(), BLACK);
-			DrawCircle(playerList[i]->getCenter().x, playerList[i]->getCenter().y, playerList[i]->getRadius() - 1, playerList[i]->color);
+			DrawCircle(playerList[i]->getCenter().x, playerList[i]->getCenter().y, playerList[i]->getRadius() - 1, playerList[i]->enemyColor);
+			DrawCircle(playerList[i]->getCenter().x, playerList[i]->getCenter().y, ((playerList[i]->getRadius() - 1) / 100) * playerList[i]->GetHealth(), playerList[i]->teamColor);
 		}
 
 		for (int i = 0; i < maxShotCount; i++)
@@ -146,11 +174,21 @@ int main()
 
 		for (int i = 0; i < obsticleCount; i++)
 		{
-			DrawRectangle(obsticles[i].x, obsticles[i].y, obsticles[i].width, obsticles[i].height, LIGHTGRAY);
+			Vector2 shadowpoints[6] =
+			{
+				Vector2{ obsticles[i].x + obsticles[i].width + shadowLength, obsticles[i].y + obsticles[i].height + shadowLength },
+				Vector2{ obsticles[i].x + obsticles[i].width + shadowLength, obsticles[i].y + shadowLength },
+				Vector2{ obsticles[i].x + obsticles[i].width, obsticles[i].y },
+				Vector2{ obsticles[i].x + obsticles[i].width, obsticles[i].y + obsticles[i].height },
+				Vector2{ obsticles[i].x, obsticles[i].y + obsticles[i].height },
+				Vector2{ obsticles[i].x + shadowLength, obsticles[i].y + obsticles[i].height + shadowLength },
+			};
+			DrawPolyEx(shadowpoints, 6, Color{ 0, 0, 0, shadowIntensity });
+			DrawRectangle(obsticles[i].x, obsticles[i].y, obsticles[i].width, obsticles[i].height, GRAY);
 		}
 
-		DrawRectangle(0, 0, screenWidth, 20, team2Color);
-		DrawRectangle(0, 0, (scores.x / (scores.x + scores.y)) * screenWidth, 20, team1Color);
+		//DrawRectangle(0, 0, screenWidth, 20, team2Color);
+		//DrawRectangle(0, 0, (scores.x / (scores.x + scores.y)) * screenWidth, 20, team1Color);
 
 		EndDrawing();
 		//----------------------------------------------------------------------------------
@@ -175,6 +213,6 @@ int main()
 		delete shotList[i];
 	}
 	//--------------------------------------------------------------------------------------
-	
+
 	return 0;
 }

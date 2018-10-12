@@ -17,6 +17,7 @@ public:
 	void paintFloorLine(Vector2 p1, Vector2 p2, Color col, class FloorTile*** ftile);
 	void paintFloorLineHigh(Vector2 p1, Vector2 p2, Color col, class FloorTile*** ftile);
 	void paintFloorLineLow(Vector2 p1, Vector2 p2, Color col, class FloorTile*** ftile);
+	void clearFromObsticle(class FloorTile*** ftile, Rectangle* oblist);
 	Vector2 getScores(class FloorTile*** ftile);
 };
 

@@ -103,6 +103,16 @@ Vector2 operator*(Vector2 a, float b)
 	return result;
 }
 
+Color operator+(Color a, Color b)
+{
+	return Color{ (unsigned char)(a.r + b.r), (unsigned char)(a.g + b.g), (unsigned char)(a.b + b.b), (unsigned char)(a.a + b.a) };
+}
+
+Color operator-(Color a, Color b)
+{
+	return Color{ (unsigned char)(a.r - b.r), (unsigned char)(a.g - b.g), (unsigned char)(a.b - b.b), (unsigned char)(a.a - b.a) };
+}
+
 bool operator==(Color a, Color b)
 {
 	return (a.a == b.a && a.b == b.b && a.g == b.g && a.r == b.r);

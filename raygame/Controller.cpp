@@ -90,7 +90,7 @@ void Controller::paintFloorLine(Vector2 p1, Vector2 p2, Color col, FloorTile*** 
 	}
 }
 
-void Controller::paintFloorLineHigh(Vector2 p1, Vector2 p2, Color col, class FloorTile*** ftile)
+void Controller::paintFloorLineHigh(Vector2 p1, Vector2 p2, Color col, FloorTile*** ftile)
 {
 	int dx = p2.x - p1.x;
 	int dy = p2.y - p1.y;
@@ -118,7 +118,7 @@ void Controller::paintFloorLineHigh(Vector2 p1, Vector2 p2, Color col, class Flo
 	}
 }
 
-void Controller::paintFloorLineLow(Vector2 p1, Vector2 p2, Color col, class FloorTile*** ftile)
+void Controller::paintFloorLineLow(Vector2 p1, Vector2 p2, Color col, FloorTile*** ftile)
 {
 	int dx = p2.x - p1.x;
 	int dy = p2.y - p1.y;
@@ -146,7 +146,25 @@ void Controller::paintFloorLineLow(Vector2 p1, Vector2 p2, Color col, class Floo
 	}
 }
 
-Vector2 Controller::getScores(class FloorTile*** ftile)
+
+void Controller::clearFromObsticle(FloorTile*** ftile, Rectangle* oblist)
+{
+	for (int i = 0; i < maxObsticles; i++)
+	{
+		for (int j = oblist[i].y; j < oblist[i].y + oblist[i].height; j++)
+		{
+			for (int k = oblist[i].x; k < oblist[i].x + oblist[i].width; k++)
+			{
+				if (j >= 0 && j < screenHeight && k >= 0 && k < screenWidth)
+				{
+					ftile[j][k]->color = BLANK;
+				}
+			}
+		}
+	}
+}
+
+Vector2 Controller::getScores(FloorTile*** ftile)
 {
 	float t1count = 1;
 	Color t1color = team1Color;

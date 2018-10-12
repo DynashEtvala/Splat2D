@@ -15,7 +15,7 @@ public:
 	Shot();
 	~Shot();
 	void SetNewVals(Rectangle loc, Vector2 dir, float spd, float dmg, float rng, int bsize, int dsize, Color col);
-	void Update(class Controller* controller, class FloorTile*** ftile);
+	void Update(class Controller* controller, class FloorTile*** ftile, Rectangle* oblist, Rectangle* pitlist, class Player** players);
 	void Burst(class Controller* controller, class FloorTile*** ftile);
 	void Drip(class Controller* controller, class FloorTile*** ftile);
 };
