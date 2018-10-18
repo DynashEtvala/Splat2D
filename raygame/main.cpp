@@ -52,27 +52,30 @@ int main()
 	{
 		if (i % 2 == 0)
 		{
-			playerList[i] = new Player({ 50.0f, i * 200.0f + 50.0f }, BASE_GUN, team1Color, team2Color, i);
+			playerList[i] = new Player({ 50.0f, 50.0f }, BASE_GUN, team1Color, team2Color, i);
 		}
 		else
 		{
-			playerList[i] = new Player({ 50.0f, i * 200.0f + 50.0f }, BASE_GUN, team2Color, team1Color, i);
+			playerList[i] = new Player({ 1180.0f, 620.0f }, BASE_GUN, team2Color, team1Color, i);
 		}
 	}
 
 	Rectangle obsticles[maxObsticles];
-	int obsticleCount = 4;
+	int obsticleCount = 6;
 
-	obsticles[0] = { 40, 0, screenWidth - 80, 40 };
-	obsticles[1] = { 0, 40, 40, screenHeight - 80 };
-	obsticles[2] = { 40, screenHeight - 40, screenWidth - 80, 40 };
-	obsticles[3] = { screenWidth - 40, 40, 40, screenHeight - 80 };
+	obsticles[0] = { 0, -2, screenWidth + 2, 2 };
+	obsticles[1] = { -2, 0, 2, screenHeight + 2 };
+	obsticles[2] = { 0, screenHeight + 1, screenWidth + 2, 2 };
+	obsticles[3] = { screenWidth + 1, 0, 2, screenHeight + 2 };
+	obsticles[4] = { 340, 210, 100, 300 };
+	obsticles[5] = { 840, 210, 100, 300 };
 
 	Rectangle pits[maxObsticles];
-	int pitCount = 0;
+	int pitCount = 3;
 
-	pits[0] = { 400, 400, 200, 200 };
-	pitCount++;
+	pits[0] = { 440, 310, 400, 100 };
+	pits[1] = { 590, -100, 100, 300 };
+	pits[2] = { 590, 520, 100, 200 };
 
 	Shot* shotList[maxShotCount];
 
@@ -172,7 +175,7 @@ int main()
 			}
 		}
 
-		for (int i = 0; i < obsticleCount; i++)
+		for (int i = 4; i < obsticleCount; i++)
 		{
 			Vector2 shadowpoints[6] =
 			{

@@ -33,38 +33,69 @@ void Player::Update(Controller* controller, FloorTile*** ftile)
 {
 	if (alive)
 	{
+		if (speed != weap.walkSpeed)
+		{
+			speed = weap.walkSpeed;
+		}
+
+		//healing
+		if (ftile[(int)(getCenter().y)][(int)(getCenter().x)]->color == enemyColor)
+		{
+			Damaged(0.05f);
+		}
+		else if (timeSinceDamaged < 5)
+		{
+			timeSinceDamaged += GetFrameTime();
+		}
+		else if(currHealth < maxHealth)
+		{
+			currHealth += GetFrameTime() * 25;
+		}
+
 		direction = { GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LEFT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LEFT_Y) };
-		if (VectorLength(direction) < 0.05)
+		if (VectorLength(direction) < 0.1)
 		{
 			direction = { 0, 0 };
 		}
 
 		// shooting
-		if (GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RT) > 0.5)
+		if (GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RT) > 0.5f)
 		{
-			if (fireTimer >= weap.fireSpeed)
+			speed = weap.shootingSpeed;
+			if (fireTimer >= weap.fireRate)
 			{
 				Rectangle shotRect = { getCenter().x - collisionRect.width / 8, getCenter().y - collisionRect.height / 8, collisionRect.height / 4, collisionRect.width / 4 };
 				if (VectorLength({ GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_Y) }) > 0.1)
 				{
-					controller->addShot(shotRect, NormalizeVector(NormalizeVector(Vector2{ GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_Y) }) + Vector2{ (float)(GetRandomValue(-weap.accuracy, weap.accuracy)) * 0.01f, (float)(GetRandomValue(-weap.accuracy, weap.accuracy) * 0.01f) }), weap.shotSpeed, weap.damage, weap.range, weap.burstSize, weap.dripSize, teamColor);
+					controller->addShot(shotRect, NormalizeVector(NormalizeVector(Vector2{ GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_Y) }) + Vector2{ (float)(GetRandomValue(-weap.accuracy, weap.accuracy)) * 0.01f, (float)(GetRandomValue(-weap.accuracy, weap.accuracy) * 0.01f) }), weap.bulletSpeed, weap.damage, weap.range, weap.burstSize, weap.dripSize, teamColor);
 				}
 				else
 				{
-					controller->addShot(shotRect, NormalizeVector(direction), weap.shotSpeed, weap.damage, weap.range, weap.burstSize, weap.dripSize, teamColor);
+					controller->addShot(shotRect, NormalizeVector(direction), weap.bulletSpeed, weap.damage, weap.range, weap.burstSize, weap.dripSize, teamColor);
 				}
 				fireTimer = 0;
 			}
 		}
+		else if (GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LT) > 0.5f)
+		{
+			if (ftile[(int)(getCenter().y)][(int)(getCenter().x)]->color == teamColor)
+			{
+				speed = swimSpeed;
+			}
+			else
+			{
+				speed = drySwimSpeed;
+			}
+		}
 
-		if (fireTimer < weap.fireSpeed)
+		if (fireTimer < weap.fireRate)
 		{
 			fireTimer += GetFrameTime();
 		}
 
 		// movement
 
-		if (VectorLength(direction) > 0.1)
+		if (VectorLength(direction) >= 0.1)
 		{
 			collisionRect.x += direction.x * speed * GetFrameTime();
 			collisionRect.y += direction.y * speed * GetFrameTime();

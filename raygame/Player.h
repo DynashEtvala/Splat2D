@@ -13,6 +13,7 @@ private:
 	Weapon weap;
 	int playerNumber;
 	bool alive = false;
+	bool swimming = false;
 public:
 	Color teamColor;
 	Color enemyColor;
