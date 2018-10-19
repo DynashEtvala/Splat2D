@@ -36,7 +36,7 @@ void Shot::Update(Controller* controller, FloorTile*** ftile, Rectangle* oblist,
 	}
 	if (timer < range)
 	{
-		if (!GetRandomValue(0, 1) && !overwater)
+		if (GetRandomValue(0, 3) && !overwater)
 		{
 			Drip(controller, ftile);
 		}
@@ -47,7 +47,7 @@ void Shot::Update(Controller* controller, FloorTile*** ftile, Rectangle* oblist,
 		{
 			if (CheckCollisionCircles(players[i]->getCenter(), players[i]->getRadius(), getCenter(), getRadius()) && players[i]->teamColor != color)
 			{
-				players[i]->Damaged(damage);
+				players[i]->Damaged(damage, controller, ftile);
 				active = false;
 				return;
 			}
@@ -61,7 +61,7 @@ void Shot::Update(Controller* controller, FloorTile*** ftile, Rectangle* oblist,
 		{
 			if (CheckCollisionCircles(players[i]->getCenter(), players[i]->getRadius(), getCenter(), getRadius()) && players[i]->teamColor != color)
 			{
-				players[i]->Damaged(damage);
+				players[i]->Damaged(damage, controller, ftile);
 				active = false;
 				return;
 			}
@@ -72,6 +72,12 @@ void Shot::Update(Controller* controller, FloorTile*** ftile, Rectangle* oblist,
 		}
 		active = false;
 	}
+}
+
+void Shot::Draw()
+{
+	DrawCircle(getCenter().x, getCenter().y, getRadius(), BLACK);
+	DrawCircle(getCenter().x, getCenter().y, getRadius() - 1, color);
 }
 
 void Shot::SetNewVals(Rectangle loc, Vector2 dir, float spd, float dmg, float rng, int bsize, int dsize, Color col)

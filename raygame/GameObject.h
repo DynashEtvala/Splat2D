@@ -1,5 +1,6 @@
 #pragma once
 #include "raylib.h"
+#include "GlobalVars.h"
 class GameObject
 {
 protected:
@@ -10,8 +11,17 @@ public:
 
 	GameObject();
 	~GameObject();
-	virtual void Update(class Controller controller);
+	virtual void Draw()=0;
 	Vector2 getCenter();
-	float getRadius();
+	float getRadius(); 
+	bool pointOnScreen(int x, int y)
+	{
+		if (x >= 0 && x < screenWidth && y >= 0 && y < screenHeight)
+		{
+			return true;
+		}
+		return false;
+	};
+
 };
 

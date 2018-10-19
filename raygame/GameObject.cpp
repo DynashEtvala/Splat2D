@@ -17,8 +17,6 @@ GameObject::GameObject()
 GameObject::~GameObject()
 {}
 
-void GameObject::Update(Controller controller) {}
-
 Vector2 GameObject::getCenter()
 {
 	Vector2 result;

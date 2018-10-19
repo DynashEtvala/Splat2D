@@ -17,6 +17,7 @@
 #include "GlobalVars.h"
 #include "FloorTile.h"
 #include "Math.h"
+#include "SpawnPad.h"
 
 
 int main()
@@ -46,29 +47,34 @@ int main()
 		}
 	}
 
+	SpawnPad pads[2];
+
+	pads[0] = SpawnPad{ 40, 40, team1Color };
+	pads[1] = SpawnPad{ 1140, 580, team2Color };
+
 	Player* playerList[maxPlayerCount];
 
 	for (int i = 0; i < maxPlayerCount; i++)
 	{
 		if (i % 2 == 0)
 		{
-			playerList[i] = new Player({ 50.0f, 50.0f }, BASE_GUN, team1Color, team2Color, i);
+			playerList[i] = new Player(pads[0].spawnSpaces[i / 2], BASE_GUN, team1Color, team2Color, i);
 		}
 		else
 		{
-			playerList[i] = new Player({ 1180.0f, 620.0f }, BASE_GUN, team2Color, team1Color, i);
+			playerList[i] = new Player(pads[1].spawnSpaces[3 - (i / 2)], BASE_GUN, team2Color, team1Color, i);
 		}
 	}
 
-	Rectangle obsticles[maxObsticles];
-	int obsticleCount = 6;
+	Rectangle walls[maxObsticles];
+	int wallCount = 6;
 
-	obsticles[0] = { 0, -2, screenWidth + 2, 2 };
-	obsticles[1] = { -2, 0, 2, screenHeight + 2 };
-	obsticles[2] = { 0, screenHeight + 1, screenWidth + 2, 2 };
-	obsticles[3] = { screenWidth + 1, 0, 2, screenHeight + 2 };
-	obsticles[4] = { 340, 210, 100, 300 };
-	obsticles[5] = { 840, 210, 100, 300 };
+	walls[0] = { -20, -20, screenWidth + 40, 20 };
+	walls[1] = { -20, -20, 20, screenHeight + 40 };
+	walls[2] = { -20, screenHeight + 1, screenWidth + 40, 20 };
+	walls[3] = { screenWidth + 1, -20, 20, screenHeight + 40 };
+	walls[4] = { 340, 210, 100, 300 };
+	walls[5] = { 840, 210, 100, 300 };
 
 	Rectangle pits[maxObsticles];
 	int pitCount = 3;
@@ -100,7 +106,7 @@ int main()
 		{
 			for (int i = 0; i < maxPlayerCount; i++)
 			{
-				playerList[i]->Update(&controller, floorTiles);
+				playerList[i]->Update(&controller, floorTiles, pads, walls, pits);
 			}
 
 			gameTimer += GetFrameTime();
@@ -110,12 +116,15 @@ int main()
 		{
 			if (shotList[i]->active)
 			{
-				shotList[i]->Update(&controller, floorTiles, obsticles, pits, playerList);
+				shotList[i]->Update(&controller, floorTiles, walls, pits, playerList);
 			}
 		}
 
+		controller.paintFloor(pads[0].getCenter(), pads[0].getRadius() - 1, team1Color, floorTiles);
+		controller.paintFloor(pads[1].getCenter(), pads[1].getRadius() - 1, team2Color, floorTiles);
+
 		controller.clearFromObsticle(floorTiles, pits);
-		controller.clearFromObsticle(floorTiles, obsticles);
+		controller.clearFromObsticle(floorTiles, walls);
 
 		if (scoretimer >= 10)
 		{
@@ -159,39 +168,42 @@ int main()
 			DrawPolyEx(shadowpoints, 6, Color{ 0, 0, 0, shadowIntensity });
 		}
 
+		pads[0].Draw();
+		pads[1].Draw();
+
 		for (int i = 0; i < maxPlayerCount; i++)
 		{
-			DrawCircle(playerList[i]->getCenter().x, playerList[i]->getCenter().y, playerList[i]->getRadius(), BLACK);
-			DrawCircle(playerList[i]->getCenter().x, playerList[i]->getCenter().y, playerList[i]->getRadius() - 1, playerList[i]->enemyColor);
-			DrawCircle(playerList[i]->getCenter().x, playerList[i]->getCenter().y, ((playerList[i]->getRadius() - 1) / 100) * playerList[i]->GetHealth(), playerList[i]->teamColor);
+			playerList[i]->Draw();
 		}
 
 		for (int i = 0; i < maxShotCount; i++)
 		{
 			if (shotList[i]->active)
 			{
-				DrawCircle(shotList[i]->getCenter().x, shotList[i]->getCenter().y, shotList[i]->getRadius(), BLACK);
-				DrawCircle(shotList[i]->getCenter().x, shotList[i]->getCenter().y, shotList[i]->getRadius() - 1, shotList[i]->color);
+				shotList[i]->Draw();
 			}
 		}
 
-		for (int i = 4; i < obsticleCount; i++)
+		for (int i = 4; i < wallCount; i++)
 		{
 			Vector2 shadowpoints[6] =
 			{
-				Vector2{ obsticles[i].x + obsticles[i].width + shadowLength, obsticles[i].y + obsticles[i].height + shadowLength },
-				Vector2{ obsticles[i].x + obsticles[i].width + shadowLength, obsticles[i].y + shadowLength },
-				Vector2{ obsticles[i].x + obsticles[i].width, obsticles[i].y },
-				Vector2{ obsticles[i].x + obsticles[i].width, obsticles[i].y + obsticles[i].height },
-				Vector2{ obsticles[i].x, obsticles[i].y + obsticles[i].height },
-				Vector2{ obsticles[i].x + shadowLength, obsticles[i].y + obsticles[i].height + shadowLength },
+				Vector2{ walls[i].x + walls[i].width + shadowLength, walls[i].y + walls[i].height + shadowLength },
+				Vector2{ walls[i].x + walls[i].width + shadowLength, walls[i].y + shadowLength },
+				Vector2{ walls[i].x + walls[i].width, walls[i].y },
+				Vector2{ walls[i].x + walls[i].width, walls[i].y + walls[i].height },
+				Vector2{ walls[i].x, walls[i].y + walls[i].height },
+				Vector2{ walls[i].x + shadowLength, walls[i].y + walls[i].height + shadowLength },
 			};
 			DrawPolyEx(shadowpoints, 6, Color{ 0, 0, 0, shadowIntensity });
-			DrawRectangle(obsticles[i].x, obsticles[i].y, obsticles[i].width, obsticles[i].height, GRAY);
+			DrawRectangle(walls[i].x, walls[i].y, walls[i].width, walls[i].height, GRAY);
 		}
 
-		//DrawRectangle(0, 0, screenWidth, 20, team2Color);
-		//DrawRectangle(0, 0, (scores.x / (scores.x + scores.y)) * screenWidth, 20, team1Color);
+		if (gameTimer > matchTime)
+		{
+			DrawRectangle(0, 0, screenWidth, 20, team2Color);
+			DrawRectangle(0, 0, (scores.x / (scores.x + scores.y)) * screenWidth, 20, team1Color);
+		}
 
 		EndDrawing();
 		//----------------------------------------------------------------------------------

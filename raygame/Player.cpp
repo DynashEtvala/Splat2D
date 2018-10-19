@@ -2,11 +2,12 @@
 #include "Math.h"
 #include "Controller.h"
 #include "FloorTile.h"
+#include "SpawnPad.h"
 
 
 Player::Player() : GameObject()
 {
-	collisionRect = { 0, 0, 50, 50 };
+	collisionRect = { 0, 0, 35, 35 };
 	weap = BASE_GUN;
 	speed = weap.walkSpeed;
 	teamColor = BLACK;
@@ -16,7 +17,7 @@ Player::Player() : GameObject()
 
 Player::Player(Vector2 start, Weapon w, Color tcol, Color ecol, int pnum) : GameObject()
 {
-	collisionRect = {start.x, start.y, 50, 50};
+	collisionRect = {start.x, start.y, 35, 35};
 	weap = w;
 	speed = weap.walkSpeed;
 	teamColor = tcol;
@@ -29,7 +30,7 @@ Player::~Player()
 {}
 
 
-void Player::Update(Controller* controller, FloorTile*** ftile)
+void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads, Rectangle * walls, Rectangle * pits)
 {
 	if (alive)
 	{
@@ -37,11 +38,11 @@ void Player::Update(Controller* controller, FloorTile*** ftile)
 		{
 			speed = weap.walkSpeed;
 		}
-
-		//healing
-		if (ftile[(int)(getCenter().y)][(int)(getCenter().x)]->color == enemyColor)
+		
+		//healing + enemy ink damage
+		if (pointOnScreen((int)(getCenter().x), (int)(getCenter().y)) && ftile[(int)(getCenter().y)][(int)(getCenter().x)]->color == enemyColor)
 		{
-			Damaged(0.05f);
+			Damaged(0.05f, controller, ftile);
 		}
 		else if (timeSinceDamaged < 5)
 		{
@@ -50,6 +51,10 @@ void Player::Update(Controller* controller, FloorTile*** ftile)
 		else if(currHealth < maxHealth)
 		{
 			currHealth += GetFrameTime() * 25;
+			if (currHealth > maxHealth)
+			{
+				currHealth = maxHealth;
+			}
 		}
 
 		direction = { GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LEFT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LEFT_Y) };
@@ -88,6 +93,11 @@ void Player::Update(Controller* controller, FloorTile*** ftile)
 			}
 		}
 
+		if (pointOnScreen((int)(getCenter().x), (int)(getCenter().y)) && ftile[(int)(getCenter().y)][(int)(getCenter().x)]->color == enemyColor)
+		{
+			speed = enemyInkSpeed;
+		}
+
 		if (fireTimer < weap.fireRate)
 		{
 			fireTimer += GetFrameTime();
@@ -103,21 +113,46 @@ void Player::Update(Controller* controller, FloorTile*** ftile)
 	}
 	else
 	{
-		if (currHealth <= 0)
+		if (timeSinceDamaged < 5)
 		{
-			controller->paintFloor(getCenter(), deathPopSize, enemyColor, ftile);
+			timeSinceDamaged += GetFrameTime();
+		}
+		else if (currHealth < maxHealth)
+		{
+			currHealth += GetFrameTime() * 25;
+			if (currHealth > maxHealth)
+			{
+				currHealth = maxHealth;
+				Vector2 spawn = pads[playerNumber % 2].spawnSpaces[playerNumber/2];
+				collisionRect.x = spawn.x;
+				collisionRect.y = spawn.y;
+				alive = true;
+			}
 		}
 	}
 }
 
-void Player::Damaged(float dmg)
+void Player::Draw()
 {
-	timeSinceDamaged = 0;
-	currHealth -= dmg;
-	if (currHealth <= 0)
+	DrawCircle(getCenter().x, getCenter().y, getRadius(), BLACK);
+	DrawCircle(getCenter().x, getCenter().y, getRadius() - 1, enemyColor);
+	DrawCircle(getCenter().x, getCenter().y, ((getRadius() - 1) / 100) * GetHealth(), teamColor);
+}
+
+void Player::Damaged(float dmg, Controller* controller, FloorTile*** ftile)
+{
+	if (alive)
 	{
-		currHealth = 0;
-		alive = false;
+		timeSinceDamaged = 0;
+		currHealth -= dmg;
+		if (currHealth <= 0)
+		{
+			currHealth = 0;
+			controller->paintFloor(getCenter(), deathPopSize, enemyColor, ftile);
+			collisionRect.x = -100;
+			collisionRect.y = -100;
+			alive = false;
+		}
 	}
 }
 

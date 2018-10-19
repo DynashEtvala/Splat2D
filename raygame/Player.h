@@ -1,6 +1,5 @@
 #pragma once
 #include "GameObject.h"
-#include "GlobalVars.h"
 class Player :
 	public GameObject
 {
@@ -20,8 +19,9 @@ public:
 	Player();
 	Player(Vector2 start, Weapon w, Color tcol, Color ecol, int pnum);
 	~Player();
-	void Update(class Controller* controller, class FloorTile*** ftile);
-	void Damaged(float dmg);
+	void Update(class Controller* controller, class FloorTile*** ftile, class SpawnPad * pads, Rectangle * walls, Rectangle * pits);
+	void Draw();
+	void Damaged(float dmg, Controller* controller, FloorTile*** ftile);
 	float GetHealth();
 };
 
