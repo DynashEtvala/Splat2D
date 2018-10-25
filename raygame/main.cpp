@@ -49,8 +49,8 @@ int main()
 
 	SpawnPad pads[2];
 
-	pads[0] = SpawnPad{ 40, 40, team1Color };
-	pads[1] = SpawnPad{ 1140, 580, team2Color };
+	pads[0] = SpawnPad{ 25, 25, team1Color };
+	pads[1] = SpawnPad{ 1175, 575, team2Color };
 
 	Player* playerList[maxPlayerCount];
 
@@ -71,17 +71,17 @@ int main()
 
 	walls[0] = { -20, -20, screenWidth + 40, 20 };
 	walls[1] = { -20, -20, 20, screenHeight + 40 };
-	walls[2] = { -20, screenHeight + 1, screenWidth + 40, 20 };
-	walls[3] = { screenWidth + 1, -20, 20, screenHeight + 40 };
-	walls[4] = { 340, 210, 100, 300 };
-	walls[5] = { 840, 210, 100, 300 };
+	walls[2] = { screenWidth + 1, -20, 20, screenHeight + 40 };
+	walls[3] = { -20, screenHeight - 100, screenWidth + 40, 100 };
+	walls[4] = { 400, 200, 100, 300 };
+	walls[5] = { 800, 200, 100, 300 };
 
 	Rectangle pits[maxObsticles];
 	int pitCount = 3;
 
-	pits[0] = { 440, 310, 400, 100 };
-	pits[1] = { 590, -100, 100, 300 };
-	pits[2] = { 590, 520, 100, 200 };
+	pits[0] = { 500, 300, 300, 100 };
+	pits[1] = { 600, -100, 100, 300 };
+	pits[2] = { 600, 500, 100, 200 };
 
 	Shot* shotList[maxShotCount];
 
@@ -184,7 +184,7 @@ int main()
 			}
 		}
 
-		for (int i = 4; i < wallCount; i++)
+		for (int i = 3; i < wallCount; i++)
 		{
 			Vector2 shadowpoints[6] =
 			{
@@ -198,12 +198,23 @@ int main()
 			DrawPolyEx(shadowpoints, 6, Color{ 0, 0, 0, shadowIntensity });
 			DrawRectangle(walls[i].x, walls[i].y, walls[i].width, walls[i].height, GRAY);
 		}
-
+		for (int i = 0; i * 50 < screenHeight; i++)
+		{
+			DrawLine(0, i * 50, screenWidth, i * 50, LIME);
+			DrawLine(0, i * 50 - 1, screenWidth, i * 50 - 1, LIME);
+		}
+		for (int i = 0; i * 50 < screenWidth; i++)
+		{
+			DrawLine(i * 50, 0, i * 50, screenHeight, LIME);
+			DrawLine(i * 50 - 1, 0, i * 50 - 1, screenHeight, LIME);
+		}
 		if (gameTimer > matchTime)
 		{
-			DrawRectangle(0, 0, screenWidth, 20, team2Color);
-			DrawRectangle(0, 0, (scores.x / (scores.x + scores.y)) * screenWidth, 20, team1Color);
+			DrawRectangle(0, screenHeight - 20, screenWidth, 20, team2Color);
+			DrawRectangle(0, screenHeight - 20, (scores.x / (scores.x + scores.y)) * screenWidth, 20, team1Color);
 		}
+
+		
 
 		EndDrawing();
 		//----------------------------------------------------------------------------------

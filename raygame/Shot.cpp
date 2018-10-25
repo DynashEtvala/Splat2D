@@ -36,7 +36,7 @@ void Shot::Update(Controller* controller, FloorTile*** ftile, Rectangle* oblist,
 	}
 	if (timer < range)
 	{
-		if (GetRandomValue(0, 3) && !overwater)
+		if (GetRandomValue(0, 4) && !overwater)
 		{
 			Drip(controller, ftile);
 		}

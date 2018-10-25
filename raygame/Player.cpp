@@ -109,6 +109,42 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 		{
 			collisionRect.x += direction.x * speed * GetFrameTime();
 			collisionRect.y += direction.y * speed * GetFrameTime();
+			for (int i = 0; i < maxObsticles; i++)
+			{
+				if (CheckCollisionPointRec(getCenter(), pits[i]))
+				{
+					currHealth = 0;
+					collisionRect.x = -100;
+					collisionRect.y = -100;
+					alive = false;
+				}
+			}
+			for (int i = 0; i < maxObsticles; i++)
+			{
+				if (CheckCollisionCircleRec(getCenter(), getRadius(), walls[i]))
+				{
+					switch (sideOfRect(walls[i]))
+					{
+					case LEFT:
+						collisionRect.x = walls[i].x - collisionRect.width;
+						break;
+					case RIGHT:
+						collisionRect.x = walls[i].x + walls[i].width;
+						break;
+					case UP:
+						collisionRect.y = walls[i].y - collisionRect.height;
+						break;
+					case DOWN:
+						collisionRect.y = walls[i].y + walls[i].height;
+						break;
+					default:
+					case CENTER:
+						collisionRect.x -= direction.x * speed * GetFrameTime();
+						collisionRect.y -= direction.y * speed * GetFrameTime();
+						break;
+					}
+				}
+			}
 		}
 	}
 	else
@@ -159,4 +195,44 @@ void Player::Damaged(float dmg, Controller* controller, FloorTile*** ftile)
 float Player::GetHealth()
 {
 	return currHealth;
+}
+
+Direction Player::sideOfRect(Rectangle r)
+{
+	if (getCenter().x < r.x)
+	{
+		if (getCenter().y < r.y)
+		{
+			return TOPLEFT;
+		}
+		else if (getCenter().y > r.y + r.height)
+		{
+			return BOTTOMLEFT;
+		}
+		return LEFT;
+	}
+	else if (getCenter().x > r.x + r.width)
+	{
+		if (getCenter().y < r.y)
+		{
+			return TOPRIGHT;
+		}
+		else if (getCenter().y > r.y + r.height)
+		{
+			return BOTTOMRIGHT;
+		}
+		return RIGHT;
+	}
+	else if (getCenter().y < r.y)
+	{
+		return UP;
+	}
+	else if (getCenter().y > r.y + r.height)
+	{
+		return DOWN;
+	}
+	else
+	{
+		return CENTER;
+	}
 }

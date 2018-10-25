@@ -23,5 +23,6 @@ public:
 	void Draw();
 	void Damaged(float dmg, Controller* controller, FloorTile*** ftile);
 	float GetHealth();
+	Direction sideOfRect(Rectangle r);
 };
 
