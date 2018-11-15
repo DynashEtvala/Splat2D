@@ -25,7 +25,7 @@ int main()
 	// Initialization
 	//--------------------------------------------------------------------------------------
 
-	InitWindow(screenWidth, screenHeight, "raylib [core] example - basic window");
+	InitWindow(screenWidth, screenHeight, "Splat2d");
 
 	FloorTile*** floorTiles = new FloorTile**[screenHeight];
 
@@ -33,6 +33,8 @@ int main()
 
 	Vector2 scores;
 	int scoretimer = 0;
+
+	RenderTexture2D fTiles = LoadRenderTexture(screenWidth, screenHeight);
 
 	for (int i = 0; i < screenHeight; i++)
 	{
@@ -67,21 +69,28 @@ int main()
 	}
 
 	Rectangle walls[maxObsticles];
-	int wallCount = 6;
+	int wallCount = 8;
 
 	walls[0] = { -20, -20, screenWidth + 40, 20 };
 	walls[1] = { -20, -20, 20, screenHeight + 40 };
 	walls[2] = { screenWidth + 1, -20, 20, screenHeight + 40 };
 	walls[3] = { -20, screenHeight - 100, screenWidth + 40, 100 };
-	walls[4] = { 400, 200, 100, 300 };
+	walls[6] = { 400, 200, 100, 300 };
 	walls[5] = { 800, 200, 100, 300 };
+	walls[4] = { 200, 200, 200, 100 };
+	walls[7] = { 900, 400, 200, 100 };
 
 	Rectangle pits[maxObsticles];
-	int pitCount = 3;
+	int pitCount = 8;
 
-	pits[0] = { 500, 300, 300, 100 };
+	pits[0] = { 500, 300, 100, 100 };
+	pits[7] = { 700, 300, 100, 100 };
 	pits[1] = { 600, -100, 100, 300 };
 	pits[2] = { 600, 500, 100, 200 };
+	pits[3] = { 100, 400, 200, 200 };
+	pits[4] = { 1000, 100, 200, 200 };
+	pits[5] = { 400, 500, 100, 100 };
+	pits[6] = { 800, 100, 100, 100 };
 
 	Shot* shotList[maxShotCount];
 
@@ -116,7 +125,7 @@ int main()
 		{
 			if (shotList[i]->active)
 			{
-				shotList[i]->Update(&controller, floorTiles, walls, pits, playerList);
+				shotList[i]->Update(&controller, floorTiles, walls, pits, pads, playerList);
 			}
 		}
 
@@ -142,16 +151,23 @@ int main()
 
 		ClearBackground(DARKGRAY);
 
-		for (int i = 0; i < screenHeight; i++)
+		if (scoretimer % 5 == 0)
 		{
-			for (int j = 0; j < screenWidth; j++)
+			BeginTextureMode(fTiles);
+			for (int i = 0; i < screenHeight; i++)
 			{
-				if (floorTiles[i][j]->color != unclaimed)
+				for (int j = 0; j < screenWidth; j++)
 				{
-					DrawPixel(j, i, floorTiles[i][j]->color);
+					if (floorTiles[i][j]->color != unclaimed)
+					{
+						DrawPixel(j, i, floorTiles[i][j]->color);
+					}
 				}
 			}
+			EndTextureMode();
 		}
+
+		DrawTextureRec(fTiles.texture, Rectangle{ 0, 0, (float)fTiles.texture.width, (float)(-fTiles.texture.height) }, Vector2{ 0, 0 }, WHITE);
 
 		for (int i = 0; i < pitCount; i++)
 		{
@@ -197,16 +213,6 @@ int main()
 			};
 			DrawPolyEx(shadowpoints, 6, Color{ 0, 0, 0, shadowIntensity });
 			DrawRectangle(walls[i].x, walls[i].y, walls[i].width, walls[i].height, GRAY);
-		}
-		for (int i = 0; i * 50 < screenHeight; i++)
-		{
-			DrawLine(0, i * 50, screenWidth, i * 50, LIME);
-			DrawLine(0, i * 50 - 1, screenWidth, i * 50 - 1, LIME);
-		}
-		for (int i = 0; i * 50 < screenWidth; i++)
-		{
-			DrawLine(i * 50, 0, i * 50, screenHeight, LIME);
-			DrawLine(i * 50 - 1, 0, i * 50 - 1, screenHeight, LIME);
 		}
 		if (gameTimer > matchTime)
 		{

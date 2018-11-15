@@ -4,9 +4,8 @@
 class SpawnPad :
 	public GameObject
 {
-private:
-	Color teamColor = BLACK;
 public:
+	Color teamColor = BLACK;
 	Vector2 spawnSpaces[4];
 	SpawnPad();
 	SpawnPad(int x, int y, Color col);

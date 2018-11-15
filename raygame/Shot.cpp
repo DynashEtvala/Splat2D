@@ -3,6 +3,7 @@
 #include "Controller.h"
 #include "FloorTile.h"
 #include "Player.h"
+#include "SpawnPad.h"
 
 Shot::Shot() : GameObject()
 {
@@ -12,7 +13,7 @@ Shot::Shot() : GameObject()
 Shot::~Shot()
 {}
 
-void Shot::Update(Controller* controller, FloorTile*** ftile, Rectangle* oblist, Rectangle* pitlist, Player** players)
+void Shot::Update(Controller* controller, FloorTile*** ftile, Rectangle* oblist, Rectangle* pitlist, SpawnPad* pads, Player** players)
 {
 	for (int i = 0; i < maxObsticles; i++)
 	{
@@ -21,6 +22,16 @@ void Shot::Update(Controller* controller, FloorTile*** ftile, Rectangle* oblist,
 			collisionRect.x += direction.x * speed * GetFrameTime();
 			collisionRect.y += direction.y * speed * GetFrameTime();
 			Burst(controller, ftile);
+			active = false;
+			return;
+		}
+	}
+	for (int i = 0; i < 2; i++)
+	{
+		if (CheckCollisionCircles(getCenter() + Vector2{ direction.x * speed * GetFrameTime(), direction.y * speed * GetFrameTime() }, getRadius(), pads[i].getCenter(), pads[i].getRadius()) && pads[i].teamColor != color)
+		{
+			collisionRect.x += direction.x * speed * GetFrameTime();
+			collisionRect.y += direction.y * speed * GetFrameTime();
 			active = false;
 			return;
 		}
@@ -36,7 +47,7 @@ void Shot::Update(Controller* controller, FloorTile*** ftile, Rectangle* oblist,
 	}
 	if (timer < range)
 	{
-		if (GetRandomValue(0, 4) && !overwater)
+		if (!overwater)
 		{
 			Drip(controller, ftile);
 		}

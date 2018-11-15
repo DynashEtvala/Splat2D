@@ -5,9 +5,8 @@
 #include "SpawnPad.h"
 
 
-Player::Player() : GameObject()
+Player::Player()
 {
-	collisionRect = { 0, 0, 35, 35 };
 	weap = BASE_GUN;
 	speed = weap.walkSpeed;
 	teamColor = BLACK;
@@ -15,15 +14,16 @@ Player::Player() : GameObject()
 }
 
 
-Player::Player(Vector2 start, Weapon w, Color tcol, Color ecol, int pnum) : GameObject()
+Player::Player(Vector2 start, Weapon w, Color tcol, Color ecol, int pnum)
 {
-	collisionRect = {start.x, start.y, 35, 35};
 	weap = w;
 	speed = weap.walkSpeed;
 	teamColor = tcol;
 	enemyColor = ecol;
 	playerNumber = pnum;
 	alive = true;
+	bodyRect1 = Rectangle{ 0, 0, (float)(body.width), (float)(body.height) };
+	bodyRect2 = Rectangle{ start.x, start.y, 35, 35};
 }
 
 Player::~Player()
@@ -34,6 +34,7 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 {
 	if (alive)
 	{
+		swimming = false;
 		if (speed != weap.walkSpeed)
 		{
 			speed = weap.walkSpeed;
@@ -44,48 +45,56 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 		{
 			Damaged(0.05f, controller, ftile);
 		}
-		else if (timeSinceDamaged < 5)
+		else if (timeSinceDamaged < 2.5f)
 		{
 			timeSinceDamaged += GetFrameTime();
 		}
 		else if(currHealth < maxHealth)
 		{
-			currHealth += GetFrameTime() * 25;
+			currHealth += GetFrameTime() * 40;
 			if (currHealth > maxHealth)
 			{
 				currHealth = maxHealth;
 			}
 		}
-
-		direction = { GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LEFT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LEFT_Y) };
-		if (VectorLength(direction) < 0.1)
+		if (dirBody.x != 0 && dirBody.y != 0)
 		{
-			direction = { 0, 0 };
+			lastDirBody = NormalizeVector(dirBody);
+		}
+		dirBody = Vector2{ GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LEFT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LEFT_Y) };
+		if (VectorLength(dirBody) < 0.1)
+		{
+			dirBody = { 0, 0 };
 		}
 
 		// shooting
-		if (GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RT) > 0.5f)
+		if (GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RT) > 0.2f)
 		{
 			speed = weap.shootingSpeed;
-			if (fireTimer >= weap.fireRate)
+			if (fireTimer >= weap.fireRate && ammo > weap.ammoConsume)
 			{
-				Rectangle shotRect = { getCenter().x - collisionRect.width / 8, getCenter().y - collisionRect.height / 8, collisionRect.height / 4, collisionRect.width / 4 };
+				Rectangle shotRect = { getCenter().x - bodyRect2.width / 8, getCenter().y - bodyRect2.height / 8, bodyRect2.height / 4, bodyRect2.width / 4 };
 				if (VectorLength({ GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_Y) }) > 0.1)
 				{
 					controller->addShot(shotRect, NormalizeVector(NormalizeVector(Vector2{ GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_Y) }) + Vector2{ (float)(GetRandomValue(-weap.accuracy, weap.accuracy)) * 0.01f, (float)(GetRandomValue(-weap.accuracy, weap.accuracy) * 0.01f) }), weap.bulletSpeed, weap.damage, weap.range, weap.burstSize, weap.dripSize, teamColor);
 				}
 				else
 				{
-					controller->addShot(shotRect, NormalizeVector(direction), weap.bulletSpeed, weap.damage, weap.range, weap.burstSize, weap.dripSize, teamColor);
+					controller->addShot(shotRect, NormalizeVector(dirBody + Vector2{ (float)(GetRandomValue(-weap.accuracy, weap.accuracy)) * 0.01f, (float)(GetRandomValue(-weap.accuracy, weap.accuracy) * 0.01f) }), weap.bulletSpeed, weap.damage, weap.range, weap.burstSize, weap.dripSize, teamColor);
 				}
+				ammo -= weap.ammoConsume;
 				fireTimer = 0;
 			}
+			reloadTimer = 0;
 		}
-		else if (GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LT) > 0.5f)
+		else if (GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LT) > 0.2f)
 		{
+			swimming = true;
 			if (ftile[(int)(getCenter().y)][(int)(getCenter().x)]->color == teamColor)
 			{
 				speed = swimSpeed;
+				reloadTimer = 5;
+				ammo += 20 * GetFrameTime();
 			}
 			else
 			{
@@ -103,19 +112,35 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 			fireTimer += GetFrameTime();
 		}
 
+		if (reloadTimer < 1)
+		{
+			reloadTimer += GetFrameTime();
+		}
+		else
+		{
+			if (ammo < 100)
+			{
+				ammo += 20 * GetFrameTime();
+			}
+			if (ammo > 100)
+			{
+				ammo = 100;
+			}
+		}
+
 		// movement
 
-		if (VectorLength(direction) >= 0.1)
+		if (VectorLength(dirBody) >= 0.1)
 		{
-			collisionRect.x += direction.x * speed * GetFrameTime();
-			collisionRect.y += direction.y * speed * GetFrameTime();
+			bodyRect2.x += dirBody.x * speed * GetFrameTime();
+			bodyRect2.y += dirBody.y * speed * GetFrameTime();
 			for (int i = 0; i < maxObsticles; i++)
 			{
 				if (CheckCollisionPointRec(getCenter(), pits[i]))
 				{
 					currHealth = 0;
-					collisionRect.x = -100;
-					collisionRect.y = -100;
+					bodyRect2.x = -100;
+					bodyRect2.y = -100;
 					alive = false;
 				}
 			}
@@ -126,21 +151,93 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 					switch (sideOfRect(walls[i]))
 					{
 					case LEFT:
-						collisionRect.x = walls[i].x - collisionRect.width;
+						bodyRect2.x = walls[i].x - bodyRect2.width + 0.83f;
 						break;
 					case RIGHT:
-						collisionRect.x = walls[i].x + walls[i].width;
+						bodyRect2.x = walls[i].x + walls[i].width;
 						break;
 					case UP:
-						collisionRect.y = walls[i].y - collisionRect.height;
+						bodyRect2.y = walls[i].y - bodyRect2.height + 0.83f;
 						break;
 					case DOWN:
-						collisionRect.y = walls[i].y + walls[i].height;
+						bodyRect2.y = walls[i].y + walls[i].height;
+						break;
+					case TOPLEFT:
+						if (dirBody.x < dirBody.y)
+						{
+							while (CheckCollisionCircleRec(getCenter(), getRadius(), walls[i]))
+							{
+								bodyRect2.y--;
+							}
+							bodyRect2.y += 1 - (bodyRect2.y - (int)(bodyRect2.y));
+						}
+						else
+						{
+							while (CheckCollisionCircleRec(getCenter(), getRadius(), walls[i]))
+							{
+								bodyRect2.x--;
+							}
+							bodyRect2.x += 1 - (bodyRect2.x - (int)(bodyRect2.x));
+						}
+						break;
+					case TOPRIGHT:
+						if (dirBody.x * -1 < dirBody.y)
+						{
+							while (CheckCollisionCircleRec(getCenter(), getRadius(), walls[i]))
+							{
+								bodyRect2.y--;
+							}
+							bodyRect2.y += 1 - (bodyRect2.y - (int)(bodyRect2.y));
+						}
+						else
+						{
+							while (CheckCollisionCircleRec(getCenter(), getRadius(), walls[i]))
+							{
+								bodyRect2.x++;
+							}
+							bodyRect2.x -= bodyRect2.x - (int)(bodyRect2.x);
+						}
+						break;
+					case BOTTOMLEFT:
+						if (dirBody.x < dirBody.y * -1)
+						{
+							while (CheckCollisionCircleRec(getCenter(), getRadius(), walls[i]))
+							{
+								bodyRect2.y++;
+							}
+							bodyRect2.y -= bodyRect2.y - (int)(bodyRect2.y);
+						}
+						else
+						{
+							while (CheckCollisionCircleRec(getCenter(), getRadius(), walls[i]))
+							{
+								bodyRect2.x--;
+							}
+							bodyRect2.x += 1 - (bodyRect2.x - (int)(bodyRect2.x));
+						}
+						break;
+					case BOTTOMRIGHT:
+						if (dirBody.x * -1 < dirBody.y * -1)
+						{
+							while (CheckCollisionCircleRec(getCenter(), getRadius(), walls[i]))
+							{
+								bodyRect2.y++;
+							}
+							bodyRect2.y -= bodyRect2.y - (int)(bodyRect2.y);
+						}
+						else
+						{
+							while (CheckCollisionCircleRec(getCenter(), getRadius(), walls[i]))
+							{
+								bodyRect2.x++;
+							}
+							bodyRect2.x -= bodyRect2.x - (int)(bodyRect2.x);
+						}
 						break;
 					default:
 					case CENTER:
-						collisionRect.x -= direction.x * speed * GetFrameTime();
-						collisionRect.y -= direction.y * speed * GetFrameTime();
+						bodyRect2.x -= dirBody.x * speed * GetFrameTime();
+						bodyRect2.y -= dirBody.y * speed * GetFrameTime();
 						break;
 					}
 				}
@@ -160,8 +257,9 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 			{
 				currHealth = maxHealth;
 				Vector2 spawn = pads[playerNumber % 2].spawnSpaces[playerNumber/2];
-				collisionRect.x = spawn.x;
-				collisionRect.y = spawn.y;
+				bodyRect2.x = spawn.x;
+				bodyRect2.y = spawn.y;
+				ammo = 100;
 				alive = true;
 			}
 		}
@@ -170,9 +268,35 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 
 void Player::Draw()
 {
-	DrawCircle(getCenter().x, getCenter().y, getRadius(), BLACK);
-	DrawCircle(getCenter().x, getCenter().y, getRadius() - 1, enemyColor);
-	DrawCircle(getCenter().x, getCenter().y, ((getRadius() - 1) / 100) * GetHealth(), teamColor);
+	if (!swimming)
+	{
+		DrawTexturePro(body, bodyRect1, bodyRect2, Vector2{ bodyRect2.width / 2, bodyRect2.height / 2 }, 90, teamColor);
+		//DrawCircle(getCenter().x, getCenter().y, getRadius(), BLACK);
+		//DrawCircle(getCenter().x, getCenter().y, getRadius() - 1, enemyColor);
+		//DrawCircle(getCenter().x, getCenter().y, ((getRadius() - 1) / 100) * GetHealth(), teamColor);
+	}
+	else
+	{
+		if (dirBody.x != 0 && dirBody.y != 0)
+		{
+			Vector2 dirBodyD = NormalizeVector(dirBody);
+			DrawTexturePro(body, bodyRect1, bodyRect2, Vector2{ bodyRect2.width / 2, bodyRect2.height / 2 }, 0, teamColor);
+			//DrawTriangle(dirBodyD * (getRadius() + getRadius() / 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ -dirBodyD.y, dirBodyD.x }) * (-getRadius() - getRadius() / 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ dirBodyD.y, -dirBodyD.x }) * (-getRadius() - getRadius() / 2) + getCenter(), BLACK);
+			//DrawTriangle(dirBodyD * (getRadius() + getRadius() / 2 - 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ -dirBodyD.y, dirBodyD.x }) * (-getRadius() - getRadius() / 2 + 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ dirBodyD.y, -dirBodyD.x }) * (-getRadius() - getRadius() / 2 + 2) + getCenter(), enemyColor);
+			//DrawTriangle(dirBodyD * ((getRadius() + getRadius() / 2 - 2) / 100) * GetHealth() + getCenter(), NormalizeVector((dirBodyD)+Vector2{ -dirBodyD.y, dirBodyD.x }) * ((-getRadius() - getRadius() / 2 + 2) / 100) * GetHealth() + getCenter(), NormalizeVector((dirBodyD)+Vector2{ dirBodyD.y, -dirBodyD.x }) * ((-getRadius() - getRadius() / 2 + 2) / 100) * GetHealth() + getCenter(), teamColor);
+		}
+		else
+		{
+			Vector2 dirBodyD = NormalizeVector(lastDirBody);
+			DrawTexturePro(body, bodyRect1, bodyRect2, Vector2{ bodyRect2.width / 2, bodyRect2.height / 2 }, 180, teamColor);
+			//DrawTriangle(dirBodyD * (getRadius() + getRadius() / 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ -dirBodyD.y, dirBodyD.x }) * (-getRadius() - getRadius() / 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ dirBodyD.y, -dirBodyD.x }) * (-getRadius() - getRadius() / 2) + getCenter(), BLACK);
+			//DrawTriangle(dirBodyD * (getRadius() + getRadius() / 2 - 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ -dirBodyD.y, dirBodyD.x }) * (-getRadius() - getRadius() / 2 + 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ dirBodyD.y, -dirBodyD.x }) * (-getRadius() - getRadius() / 2 + 2) + getCenter(), enemyColor);
+			//DrawTriangle(dirBodyD * ((getRadius() + getRadius() / 2 - 2) / 100) * GetHealth() + getCenter(), NormalizeVector((dirBodyD)+Vector2{ -dirBodyD.y, dirBodyD.x }) * ((-getRadius() - getRadius() / 2 + 2) / 100) * GetHealth() + getCenter(), NormalizeVector((dirBodyD)+Vector2{ dirBodyD.y, -dirBodyD.x }) * ((-getRadius() - getRadius() / 2 + 2) / 100) * GetHealth() + getCenter(), teamColor);
+		}
+	}
+	DrawRectangle(bodyRect2.x + bodyRect2.width, bodyRect2.y, 10, 35, BLACK);
+	DrawRectangle(bodyRect2.x + bodyRect2.width + 1, bodyRect2.y + 1, 8, 33, WHITE);
+	DrawRectangle(bodyRect2.x + bodyRect2.width + 1, bodyRect2.y + 34 - ammo * 0.33f, 8, ammo * 0.33f, teamColor);
 }
 
 void Player::Damaged(float dmg, Controller* controller, FloorTile*** ftile)
@@ -185,8 +309,8 @@ void Player::Damaged(float dmg, Controller* controller, FloorTile*** ftile)
 		{
 			currHealth = 0;
 			controller->paintFloor(getCenter(), deathPopSize, enemyColor, ftile);
-			collisionRect.x = -100;
-			collisionRect.y = -100;
+			bodyRect2.x = -100;
+			bodyRect2.y = -100;
 			alive = false;
 		}
 	}
@@ -197,7 +321,7 @@ float Player::GetHealth()
 	return currHealth;
 }
 
-Direction Player::sideOfRect(Rectangle r)
+dirBody Player::sideOfRect(Rectangle r)
 {
 	if (getCenter().x < r.x)
 	{
@@ -235,4 +359,23 @@ Direction Player::sideOfRect(Rectangle r)
 	{
 		return CENTER;
 	}
+}
+
+Vector2 Player::getCenter()
+{
+	return Vector2{ bodyRect2.x + getRadius(), bodyRect2.y + getRadius() };
+}
+
+float Player::getRadius()
+{
+	return bodyRect2.height < bodyRect2.width ? bodyRect2.height / 2 : bodyRect2.width / 2;
+}
+
+bool Player::pointOnScreen(int x, int y)
+{
+	if (x >= 0 && x < screenWidth && y >= 0 && y < screenHeight)
+	{
+		return true;
+	}
+	return false;
 }
