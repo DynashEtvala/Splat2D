@@ -18,7 +18,7 @@
 #include "FloorTile.h"
 #include "Math.h"
 #include "SpawnPad.h"
-
+#include "Gamestate.h"
 
 int main()
 {
@@ -26,7 +26,7 @@ int main()
 	//--------------------------------------------------------------------------------------
 
 	InitWindow(screenWidth, screenHeight, "Splat2d");
-
+	
 	FloorTile*** floorTiles = new FloorTile**[screenHeight];
 
 	float gameTimer = 0;
@@ -111,113 +111,165 @@ int main()
 		//----------------------------------------------------------------------------------
 		// TODO: Update your variables here
 		//----------------------------------------------------------------------------------
-		if (gameTimer <= matchTime)
+		switch (GameState::getState())
 		{
-			for (int i = 0; i < maxPlayerCount; i++)
+		default:
+		case Splash:
+			if (gameTimer <= 5)
 			{
-				playerList[i]->Update(&controller, floorTiles, pads, walls, pits);
+				gameTimer += GetFrameTime();
+			}
+			else
+			{
+				gameTimer = 0;
+				GameState::setState(MainMenu);
+			}
+			if (GetGamepadButtonPressed() == GAMEPAD_XBOX_BUTTON_START)
+			{
+				gameTimer = 0;
+				GameState::setState(InGame);
+			}
+			break;
+		case MainMenu:
+			break;
+		case PlayerSelect:
+			break;
+		case InGame:
+			if (gameTimer <= matchTime)
+			{
+				for (int i = 0; i < maxPlayerCount; i++)
+				{
+					playerList[i]->Update(&controller, floorTiles, pads, walls, pits);
+				}
+
+				gameTimer += GetFrameTime();
 			}
 
-			gameTimer += GetFrameTime();
-		}
-
-		for (int i = 0; i < maxShotCount; i++)
-		{
-			if (shotList[i]->active)
+			for (int i = 0; i < maxShotCount; i++)
 			{
-				shotList[i]->Update(&controller, floorTiles, walls, pits, pads, playerList);
+				if (shotList[i]->active)
+				{
+					shotList[i]->Update(&controller, floorTiles, walls, pits, pads, playerList);
+				}
 			}
-		}
 
-		controller.paintFloor(pads[0].getCenter(), pads[0].getRadius() - 1, team1Color, floorTiles);
-		controller.paintFloor(pads[1].getCenter(), pads[1].getRadius() - 1, team2Color, floorTiles);
+			controller.paintFloor(pads[0].getCenter(), pads[0].getRadius() - 1, team1Color, floorTiles);
+			controller.paintFloor(pads[1].getCenter(), pads[1].getRadius() - 1, team2Color, floorTiles);
 
-		controller.clearFromObsticle(floorTiles, pits);
-		controller.clearFromObsticle(floorTiles, walls);
+			controller.clearFromObsticle(floorTiles, pits);
+			controller.clearFromObsticle(floorTiles, walls);
 
-		if (scoretimer >= 10)
-		{
-			scores = controller.getScores(floorTiles);
-			scoretimer = 0;
+			if (scoretimer >= 10)
+			{
+				scores = controller.getScores(floorTiles);
+				scoretimer = 0;
+			}
+			else
+			{
+				scoretimer++;
+			}
+			break;
+		case GameOver:
+			break;
+		case Options:
+			break;
 		}
-		else
-		{
-			scoretimer++;
-		}
+		
 
 		// Draw
 		//----------------------------------------------------------------------------------
 		BeginDrawing();
 
-		ClearBackground(DARKGRAY);
+		ClearBackground(RAYWHITE);
 
-		if (scoretimer % 5 == 0)
+		switch (GameState::getState())
 		{
-			BeginTextureMode(fTiles);
-			for (int i = 0; i < screenHeight; i++)
+		default:
+		case Splash:
+			break;
+		case MainMenu:
+			ClearBackground(Color{ 190, 190, 25, 255 });
+			DrawRectangle(250, 250, 200, 200, RAYWHITE);
+			DrawText("PLAY", 250, 250, 65, BLACK);
+			break;
+		case PlayerSelect:
+			break;
+		case InGame:
+			ClearBackground(DARKGRAY);
+
+			if (scoretimer % 5 == 0)
 			{
-				for (int j = 0; j < screenWidth; j++)
+				BeginTextureMode(fTiles);
+				for (int i = 0; i < screenHeight; i++)
 				{
-					if (floorTiles[i][j]->color != unclaimed)
+					for (int j = 0; j < screenWidth; j++)
 					{
-						DrawPixel(j, i, floorTiles[i][j]->color);
+						if (floorTiles[i][j]->color != unclaimed)
+						{
+							DrawPixel(j, i, floorTiles[i][j]->color);
+						}
 					}
 				}
+				EndTextureMode();
 			}
-			EndTextureMode();
-		}
 
-		DrawTextureRec(fTiles.texture, Rectangle{ 0, 0, (float)fTiles.texture.width, (float)(-fTiles.texture.height) }, Vector2{ 0, 0 }, WHITE);
+			DrawTextureRec(fTiles.texture, Rectangle{ 0, 0, (float)fTiles.texture.width, (float)(-fTiles.texture.height) }, Vector2{ 0, 0 }, WHITE);
 
-		for (int i = 0; i < pitCount; i++)
-		{
-			Vector2 shadowpoints[6] =
+			for (int i = 0; i < pitCount; i++)
 			{
-				{ pits[i].x, pits[i].y },
+				Vector2 shadowpoints[6] =
+				{
+					{ pits[i].x, pits[i].y },
 				{ pits[i].x, pits[i].y + pits[i].height },
 				{ pits[i].x + shadowLength, pits[i].y + pits[i].height },
 				{ pits[i].x + shadowLength, pits[i].y + shadowLength },
 				{ pits[i].x + pits[i].width, pits[i].y + shadowLength },
 				{ pits[i].x + pits[i].width, pits[i].y },
-			};
-			DrawRectangle(pits[i].x, pits[i].y, pits[i].width, pits[i].height, pitColor);
-			DrawPolyEx(shadowpoints, 6, Color{ 0, 0, 0, shadowIntensity });
-		}
-
-		pads[0].Draw();
-		pads[1].Draw();
-
-		for (int i = 0; i < maxPlayerCount; i++)
-		{
-			playerList[i]->Draw();
-		}
-
-		for (int i = 0; i < maxShotCount; i++)
-		{
-			if (shotList[i]->active)
-			{
-				shotList[i]->Draw();
+				};
+				DrawRectangle(pits[i].x, pits[i].y, pits[i].width, pits[i].height, pitColor);
+				DrawPolyEx(shadowpoints, 6, Color{ 0, 0, 0, shadowIntensity });
 			}
-		}
 
-		for (int i = 3; i < wallCount; i++)
-		{
-			Vector2 shadowpoints[6] =
+			pads[0].Draw();
+			pads[1].Draw();
+
+			for (int i = 0; i < maxShotCount; i++)
 			{
-				Vector2{ walls[i].x + walls[i].width + shadowLength, walls[i].y + walls[i].height + shadowLength },
-				Vector2{ walls[i].x + walls[i].width + shadowLength, walls[i].y + shadowLength },
-				Vector2{ walls[i].x + walls[i].width, walls[i].y },
-				Vector2{ walls[i].x + walls[i].width, walls[i].y + walls[i].height },
-				Vector2{ walls[i].x, walls[i].y + walls[i].height },
-				Vector2{ walls[i].x + shadowLength, walls[i].y + walls[i].height + shadowLength },
-			};
-			DrawPolyEx(shadowpoints, 6, Color{ 0, 0, 0, shadowIntensity });
-			DrawRectangle(walls[i].x, walls[i].y, walls[i].width, walls[i].height, GRAY);
-		}
-		if (gameTimer > matchTime)
-		{
-			DrawRectangle(0, screenHeight - 20, screenWidth, 20, team2Color);
-			DrawRectangle(0, screenHeight - 20, (scores.x / (scores.x + scores.y)) * screenWidth, 20, team1Color);
+				if (shotList[i]->active)
+				{
+					shotList[i]->Draw();
+				}
+			}
+
+			for (int i = 0; i < maxPlayerCount; i++)
+			{
+				playerList[i]->Draw();
+			}
+
+			for (int i = 3; i < wallCount; i++)
+			{
+				Vector2 shadowpoints[6] =
+				{
+					Vector2{ walls[i].x + walls[i].width + shadowLength, walls[i].y + walls[i].height + shadowLength },
+					Vector2{ walls[i].x + walls[i].width + shadowLength, walls[i].y + shadowLength },
+					Vector2{ walls[i].x + walls[i].width, walls[i].y },
+					Vector2{ walls[i].x + walls[i].width, walls[i].y + walls[i].height },
+					Vector2{ walls[i].x, walls[i].y + walls[i].height },
+					Vector2{ walls[i].x + shadowLength, walls[i].y + walls[i].height + shadowLength },
+				};
+				DrawPolyEx(shadowpoints, 6, Color{ 0, 0, 0, shadowIntensity });
+				DrawRectangle(walls[i].x, walls[i].y, walls[i].width, walls[i].height, GRAY);
+			}
+			if (gameTimer > matchTime)
+			{
+				DrawRectangle(0, screenHeight - 20, screenWidth, 20, team2Color);
+				DrawRectangle(0, screenHeight - 20, (scores.x / (scores.x + scores.y)) * screenWidth, 20, team1Color);
+			}
+			break;
+		case GameOver:
+			break;
+		case Options:
+			break;
 		}
 
 		

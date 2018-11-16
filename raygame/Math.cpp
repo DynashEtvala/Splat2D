@@ -10,11 +10,11 @@ float VectorLength(Vector2 v)
 	}
 	else if (v.x != 0)
 	{
-		result = v.x;
+		result = fabsf(v.x);
 	}
 	else if (v.y != 0)
 	{
-		result = v.y;
+		result = fabsf(v.y);
 	}
 	return result;
 }
@@ -101,6 +101,11 @@ Vector2 operator*(Vector2 a, float b)
 {
 	Vector2 result = { a.x * b, a.y * b };
 	return result;
+}
+
+float operator*(Vector2 a, Vector2 b)
+{
+	return (a.x * b.x) + (a.y * b.y);
 }
 
 Color operator+(Color a, Color b)

@@ -4,6 +4,7 @@ class Shot :
 	public GameObject
 {
 private:
+	Texture2D tex;
 	float damage;
 	float range;
 	float timer = 0;

@@ -3,6 +3,7 @@
 #include "Controller.h"
 #include "FloorTile.h"
 #include "SpawnPad.h"
+#include <math.h>
 
 
 Player::Player()
@@ -16,6 +17,10 @@ Player::Player()
 
 Player::Player(Vector2 start, Weapon w, Color tcol, Color ecol, int pnum)
 {
+	static Texture2D _body = LoadTexture("Sprites/tankBeige_outline.png");
+	static Texture2D _barrel = LoadTexture("Sprites/barrelBeige_outline.png");
+	body = _body;
+	barrel = _barrel;
 	weap = w;
 	speed = weap.walkSpeed;
 	teamColor = tcol;
@@ -24,6 +29,8 @@ Player::Player(Vector2 start, Weapon w, Color tcol, Color ecol, int pnum)
 	alive = true;
 	bodyRect1 = Rectangle{ 0, 0, (float)(body.width), (float)(body.height) };
 	bodyRect2 = Rectangle{ start.x, start.y, 35, 35};
+	barrelRect1 = Rectangle{ 0, 0, (float)(barrel.width), (float)(barrel.height) };
+	barrelRect2 = Rectangle{ start.x, start.y, 8, 22 };
 }
 
 Player::~Player()
@@ -57,6 +64,7 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 				currHealth = maxHealth;
 			}
 		}
+
 		if (dirBody.x != 0 && dirBody.y != 0)
 		{
 			lastDirBody = NormalizeVector(dirBody);
@@ -64,24 +72,27 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 		dirBody = Vector2{ GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LEFT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_LEFT_Y) };
 		if (VectorLength(dirBody) < 0.1)
 		{
-			dirBody = { 0, 0 };
+			dirBody = Vector2{ 0, 0 };
 		}
 
+		if (dirBarrel.x != 0 && dirBarrel.y != 0)
+		{
+			lastDirBarrel = dirBarrel;
+		}
+		dirBarrel = Vector2{ GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_Y) };
+		if (VectorLength(dirBarrel) < 0.1)
+		{
+			dirBarrel = Vector2{ 0, 0 };
+		}
+		NormalizeVector(&dirBarrel);
+
 		// shooting
-		if (GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RT) > 0.2f)
+		if (GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RT) > 0.2f && (dirBarrel.y != 0 || dirBarrel.x != 0))
 		{
 			speed = weap.shootingSpeed;
-			if (fireTimer >= weap.fireRate && ammo > weap.ammoConsume)
+			if (fireTimer >= weap.fireRate && ammo > weap.ammoConsume && VectorLength(dirBarrel) > 0.1)
 			{
-				Rectangle shotRect = { getCenter().x - bodyRect2.width / 8, getCenter().y - bodyRect2.height / 8, bodyRect2.height / 4, bodyRect2.width / 4 };
-				if (VectorLength({ GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_Y) }) > 0.1)
-				{
-					controller->addShot(shotRect, NormalizeVector(NormalizeVector(Vector2{ GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_X), GetGamepadAxisMovement(playerNumber, GAMEPAD_XBOX_AXIS_RIGHT_Y) }) + Vector2{ (float)(GetRandomValue(-weap.accuracy, weap.accuracy)) * 0.01f, (float)(GetRandomValue(-weap.accuracy, weap.accuracy) * 0.01f) }), weap.bulletSpeed, weap.damage, weap.range, weap.burstSize, weap.dripSize, teamColor);
-				}
-				else
-				{
-					controller->addShot(shotRect, NormalizeVector(dirBody + Vector2{ (float)(GetRandomValue(-weap.accuracy, weap.accuracy)) * 0.01f, (float)(GetRandomValue(-weap.accuracy, weap.accuracy) * 0.01f) }), weap.bulletSpeed, weap.damage, weap.range, weap.burstSize, weap.dripSize, teamColor);
-				}
+				controller->addShot(Rectangle{ bodyRect2.x + bodyRect2.width / 2, bodyRect2.y + bodyRect2.height / 2, 10, 10 }, NormalizeVector(dirBarrel + Vector2{GetRandomValue( -weap.accuracy, weap.accuracy) * 0.01f, GetRandomValue(-weap.accuracy, weap.accuracy) * 0.01f }), weap.bulletSpeed, weap.damage, weap.range, weap.burstSize, weap.dripSize, teamColor);
 				ammo -= weap.ammoConsume;
 				fireTimer = 0;
 			}
@@ -132,15 +143,15 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 
 		if (VectorLength(dirBody) >= 0.1)
 		{
-			bodyRect2.x += dirBody.x * speed * GetFrameTime();
-			bodyRect2.y += dirBody.y * speed * GetFrameTime();
+			barrelRect2.x = bodyRect2.x += dirBody.x * speed * GetFrameTime();
+			barrelRect2.y = bodyRect2.y += dirBody.y * speed * GetFrameTime();
 			for (int i = 0; i < maxObsticles; i++)
 			{
 				if (CheckCollisionPointRec(getCenter(), pits[i]))
 				{
 					currHealth = 0;
-					bodyRect2.x = -100;
-					bodyRect2.y = -100;
+					barrelRect2.x = bodyRect2.x = -100;
+					barrelRect2.y = bodyRect2.y = -100;
 					alive = false;
 				}
 			}
@@ -151,16 +162,16 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 					switch (sideOfRect(walls[i]))
 					{
 					case LEFT:
-						bodyRect2.x = walls[i].x - bodyRect2.width + 0.83f;
+						barrelRect2.x = bodyRect2.x = walls[i].x - bodyRect2.width + 0.83f;
 						break;
 					case RIGHT:
-						bodyRect2.x = walls[i].x + walls[i].width;
+						barrelRect2.x = bodyRect2.x = walls[i].x + walls[i].width;
 						break;
 					case UP:
-						bodyRect2.y = walls[i].y - bodyRect2.height + 0.83f;
+						barrelRect2.y = bodyRect2.y = walls[i].y - bodyRect2.height + 0.83f;
 						break;
 					case DOWN:
-						bodyRect2.y = walls[i].y + walls[i].height;
+						barrelRect2.y = bodyRect2.y = walls[i].y + walls[i].height;
 						break;
 					case TOPLEFT:
 						if (dirBody.x < dirBody.y)
@@ -169,7 +180,7 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 							{
 								bodyRect2.y--;
 							}
-							bodyRect2.y += 1 - (bodyRect2.y - (int)(bodyRect2.y));
+							barrelRect2.y = bodyRect2.y += 1 - (bodyRect2.y - (int)(bodyRect2.y));
 						}
 						else
 						{
@@ -177,7 +188,7 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 							{
 								bodyRect2.x--;
 							}
-							bodyRect2.x += 1 - (bodyRect2.x - (int)(bodyRect2.x));
+							barrelRect2.x = bodyRect2.x += 1 - (bodyRect2.x - (int)(bodyRect2.x));
 						}
 						break;
 					case TOPRIGHT:
@@ -187,7 +198,7 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 							{
 								bodyRect2.y--;
 							}
-							bodyRect2.y += 1 - (bodyRect2.y - (int)(bodyRect2.y));
+							barrelRect2.y = bodyRect2.y += 1 - (bodyRect2.y - (int)(bodyRect2.y));
 						}
 						else
 						{
@@ -213,7 +224,7 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 							{
 								bodyRect2.x--;
 							}
-							bodyRect2.x += 1 - (bodyRect2.x - (int)(bodyRect2.x));
+							barrelRect2.x = bodyRect2.x += 1 - (bodyRect2.x - (int)(bodyRect2.x));
 						}
 						break;
 					case BOTTOMRIGHT:
@@ -257,8 +268,8 @@ void Player::Update(Controller* controller, FloorTile*** ftile, SpawnPad * pads,
 			{
 				currHealth = maxHealth;
 				Vector2 spawn = pads[playerNumber % 2].spawnSpaces[playerNumber/2];
-				bodyRect2.x = spawn.x;
-				bodyRect2.y = spawn.y;
+				barrelRect2.x = bodyRect2.x = spawn.x;
+				barrelRect2.y = bodyRect2.y = spawn.y;
 				ammo = 100;
 				alive = true;
 			}
@@ -270,30 +281,32 @@ void Player::Draw()
 {
 	if (!swimming)
 	{
-		DrawTexturePro(body, bodyRect1, bodyRect2, Vector2{ bodyRect2.width / 2, bodyRect2.height / 2 }, 90, teamColor);
-		//DrawCircle(getCenter().x, getCenter().y, getRadius(), BLACK);
-		//DrawCircle(getCenter().x, getCenter().y, getRadius() - 1, enemyColor);
-		//DrawCircle(getCenter().x, getCenter().y, ((getRadius() - 1) / 100) * GetHealth(), teamColor);
-	}
-	else
-	{
 		if (dirBody.x != 0 && dirBody.y != 0)
 		{
-			Vector2 dirBodyD = NormalizeVector(dirBody);
-			DrawTexturePro(body, bodyRect1, bodyRect2, Vector2{ bodyRect2.width / 2, bodyRect2.height / 2 }, 0, teamColor);
-			//DrawTriangle(dirBodyD * (getRadius() + getRadius() / 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ -dirBodyD.y, dirBodyD.x }) * (-getRadius() - getRadius() / 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ dirBodyD.y, -dirBodyD.x }) * (-getRadius() - getRadius() / 2) + getCenter(), BLACK);
-			//DrawTriangle(dirBodyD * (getRadius() + getRadius() / 2 - 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ -dirBodyD.y, dirBodyD.x }) * (-getRadius() - getRadius() / 2 + 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ dirBodyD.y, -dirBodyD.x }) * (-getRadius() - getRadius() / 2 + 2) + getCenter(), enemyColor);
-			//DrawTriangle(dirBodyD * ((getRadius() + getRadius() / 2 - 2) / 100) * GetHealth() + getCenter(), NormalizeVector((dirBodyD)+Vector2{ -dirBodyD.y, dirBodyD.x }) * ((-getRadius() - getRadius() / 2 + 2) / 100) * GetHealth() + getCenter(), NormalizeVector((dirBodyD)+Vector2{ dirBodyD.y, -dirBodyD.x }) * ((-getRadius() - getRadius() / 2 + 2) / 100) * GetHealth() + getCenter(), teamColor);
+			Vector2 norm = NormalizeVector(dirBody);
+			float rot = -atan2f(norm.x, norm.y) * 180 / PI;
+			DrawTexturePro(body, bodyRect1, Rectangle{ bodyRect2.x + bodyRect2.width / 2, bodyRect2.y + bodyRect2.height / 2, bodyRect2.width, bodyRect2.height }, Vector2{ bodyRect2.width / 2, bodyRect2.height / 2 }, rot - 180, teamColor);
 		}
 		else
 		{
-			Vector2 dirBodyD = NormalizeVector(lastDirBody);
-			DrawTexturePro(body, bodyRect1, bodyRect2, Vector2{ bodyRect2.width / 2, bodyRect2.height / 2 }, 180, teamColor);
-			//DrawTriangle(dirBodyD * (getRadius() + getRadius() / 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ -dirBodyD.y, dirBodyD.x }) * (-getRadius() - getRadius() / 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ dirBodyD.y, -dirBodyD.x }) * (-getRadius() - getRadius() / 2) + getCenter(), BLACK);
-			//DrawTriangle(dirBodyD * (getRadius() + getRadius() / 2 - 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ -dirBodyD.y, dirBodyD.x }) * (-getRadius() - getRadius() / 2 + 2) + getCenter(), NormalizeVector((dirBodyD)+Vector2{ dirBodyD.y, -dirBodyD.x }) * (-getRadius() - getRadius() / 2 + 2) + getCenter(), enemyColor);
-			//DrawTriangle(dirBodyD * ((getRadius() + getRadius() / 2 - 2) / 100) * GetHealth() + getCenter(), NormalizeVector((dirBodyD)+Vector2{ -dirBodyD.y, dirBodyD.x }) * ((-getRadius() - getRadius() / 2 + 2) / 100) * GetHealth() + getCenter(), NormalizeVector((dirBodyD)+Vector2{ dirBodyD.y, -dirBodyD.x }) * ((-getRadius() - getRadius() / 2 + 2) / 100) * GetHealth() + getCenter(), teamColor);
+			Vector2 norm = NormalizeVector(lastDirBody);
+			float rot = -atan2f(norm.x, norm.y) * 180 / PI;
+			DrawTexturePro(body, bodyRect1, Rectangle{ bodyRect2.x + bodyRect2.width / 2, bodyRect2.y + bodyRect2.height / 2, bodyRect2.width, bodyRect2.height }, Vector2{ bodyRect2.width / 2, bodyRect2.height / 2 }, rot - 180, teamColor);
 		}
 	}
+	if (dirBarrel.x != 0 && dirBarrel.y != 0)
+	{
+		Vector2 norm = NormalizeVector(dirBarrel);
+		float rot = -atan2f(norm.x, norm.y) * 180 / PI;
+		DrawTexturePro(barrel, barrelRect1, Rectangle{ bodyRect2.x + bodyRect2.width / 2, bodyRect2.y + bodyRect2.height / 2, barrelRect2.width, barrelRect2.height }, Vector2{ barrelRect2.width / 2, barrelRect2.height }, rot - 180, teamColor);
+	}
+	else
+	{
+		Vector2 norm = NormalizeVector(lastDirBarrel);
+		float rot = -atan2f(norm.x, norm.y) * 180 / PI;
+		DrawTexturePro(barrel, barrelRect1, Rectangle{ bodyRect2.x + bodyRect2.width / 2, bodyRect2.y + bodyRect2.height / 2, barrelRect2.width, barrelRect2.height }, Vector2{ barrelRect2.width / 2, barrelRect2.height }, rot - 180, teamColor);
+	}
+
 	DrawRectangle(bodyRect2.x + bodyRect2.width, bodyRect2.y, 10, 35, BLACK);
 	DrawRectangle(bodyRect2.x + bodyRect2.width + 1, bodyRect2.y + 1, 8, 33, WHITE);
 	DrawRectangle(bodyRect2.x + bodyRect2.width + 1, bodyRect2.y + 34 - ammo * 0.33f, 8, ammo * 0.33f, teamColor);
@@ -309,8 +322,8 @@ void Player::Damaged(float dmg, Controller* controller, FloorTile*** ftile)
 		{
 			currHealth = 0;
 			controller->paintFloor(getCenter(), deathPopSize, enemyColor, ftile);
-			bodyRect2.x = -100;
-			bodyRect2.y = -100;
+			barrelRect2.x = bodyRect2.x = -100;
+			barrelRect2.y = bodyRect2.y = -100;
 			alive = false;
 		}
 	}
@@ -321,7 +334,7 @@ float Player::GetHealth()
 	return currHealth;
 }
 
-dirBody Player::sideOfRect(Rectangle r)
+Direction Player::sideOfRect(Rectangle r)
 {
 	if (getCenter().x < r.x)
 	{

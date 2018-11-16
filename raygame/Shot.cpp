@@ -4,9 +4,12 @@
 #include "FloorTile.h"
 #include "Player.h"
 #include "SpawnPad.h"
+#include <math.h>
 
 Shot::Shot() : GameObject()
 {
+	static Texture2D _tex = LoadTexture("Sprites/bulletBeigeSilver_outline.png");
+	tex = _tex;
 	active = false;
 }
 
@@ -87,8 +90,9 @@ void Shot::Update(Controller* controller, FloorTile*** ftile, Rectangle* oblist,
 
 void Shot::Draw()
 {
-	DrawCircle(getCenter().x, getCenter().y, getRadius(), BLACK);
-	DrawCircle(getCenter().x, getCenter().y, getRadius() - 1, color);
+	Vector2 norm = NormalizeVector(direction);
+	float rot = -atan2f(norm.x, norm.y) * 180 / PI;
+	DrawTexturePro(tex, Rectangle{ 0, 0, (float)(tex.width), (float)(tex.height) }, Rectangle{ collisionRect.x, collisionRect.y, (float)(tex.width) / 3, (float)(tex.height) / 3 }, Vector2{ (float)(tex.width) / 6, (float)(tex.height) / 3 }, rot - 180, color);
 }
 
 void Shot::SetNewVals(Rectangle loc, Vector2 dir, float spd, float dmg, float rng, int bsize, int dsize, Color col)
